@@ -70,12 +70,12 @@ State S1(){
 }
 
 State S2(){
-  Serial.println("State_2");
-  Serial.print(LED_BUILTIN);
+//  Serial.println("State_2");
+//  Serial.print(LED_BUILTIN);
 //  Serial.println(i);
   i+=0xFF;i%=0xFFFF;
 //  i = 0xFFFF;
-  xpand1.port(0x1434);
+  xpand1.port((analogRead(A1)/5)%60);
   digitalWrite(3, HIGH);
   digitalWrite(4, LOW);
   digitalWrite(5, HIGH);
@@ -85,6 +85,12 @@ State S2(){
   digitalWrite(8, HIGH);
   digitalWrite(9, HIGH);
   digitalWrite(10, LOW);
+
+  Serial.print(analogRead(A1));
+  Serial.print("\t");
+  Serial.print(analogRead(A2));
+  Serial.println();
+  
 //  delay(300);
 }
 
