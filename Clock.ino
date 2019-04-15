@@ -7,7 +7,7 @@
 #define XPAND_1_CS_PIN 2 //Chip Select Pin for the first MCP23S17
 MCP23S17 xpand1 = MCP23S17( XPAND_1_CS_PIN, 0x00 );//Address B001
 
-SM STM(S2);
+SM STM(Clock);
 
 void setup() {
   // put your setup code here, to run once:
@@ -49,6 +49,12 @@ void setup() {
 }
 int input = 0;
 int i = 0;
+
+uint8_t hoursDec = 00;
+uint8_t minsDec = 00; 
+uint8_t secsDec = 00;
+
+
 void loop() {
 //  input = xpand1.port()/256;//Get the MSB of the xpand1 port
 //  Serial.println(input, HEX);//Print the MSB of the xpand1 port to the Serial Monitor
@@ -62,36 +68,59 @@ State S0(){
    xpand1.port(0x0000);
 }
 
-State S1(){
-  Serial.println("State_1");
-  xpand1.port(0xFFFF);
-  if(input==0x20 || input==0x21)STM.Set(S0); 
-  if(input==0x40 || input==0x41)STM.Set(S2); 
+State Analog(){
+
 }
 
-State S2(){
-//  Serial.println("State_2");
-//  Serial.print(LED_BUILTIN);
-//  Serial.println(i);
-  i+=0xFF;i%=0xFFFF;
-//  i = 0xFFFF;
-  xpand1.port((analogRead(A1)/5)%60);
-  digitalWrite(3, HIGH);
-  digitalWrite(4, LOW);
-  digitalWrite(5, HIGH);
-  digitalWrite(6, LOW);
-  
-  digitalWrite(7, LOW);
-  digitalWrite(8, HIGH);
-  digitalWrite(9, HIGH);
-  digitalWrite(10, LOW);
+uint8_t dec2bcd(uint8_t dec)
+{
+  return (dec/10)*16 + (dec%10);
+}
 
-  Serial.print(analogRead(A1));
-  Serial.print("\t");
-  Serial.print(analogRead(A2));
-  Serial.println();
+
+void displayClock(){
+  uint8_t hoursDecHigh = hoursDec/5;
+  uint8_t hoursDecLow = hoursDec%10;
+  uint8_t hoursDecTemp = hoursDecLow*10 + hoursDecHigh;
+  uint8_t hours = dec2bcd(hoursDecTemp);  
+
+  uint8_t mins = dec2bcd(minsDec);
   
-//  delay(300);
+  uint16_t hours_mins = hours*256 + mins;
+  xpand1.port(hours_mins);
+
+  uint8_t secs = dec2bcd(secsDec);
+  digitalWrite(7, bitRead(secs,0));
+  digitalWrite(8, bitRead(secs,1));
+  digitalWrite(9, bitRead(secs,2));
+  digitalWrite(10, bitRead(secs,3));
+  
+  digitalWrite(3, bitRead(secs,4));
+  digitalWrite(4, bitRead(secs,5));
+  digitalWrite(5, bitRead(secs,6));
+  digitalWrite(6, bitRead(secs,7));
+}
+
+State Clock(){
+  int rightPot = analogRead(A1);
+  int leftPot = analogRead(A2);
+
+  displayClock();
+
+  secsDec++;
+  if(secsDec>=60){
+    secsDec = 0;
+    minsDec++;  
+  }
+  if(minsDec>=60){
+    minsDec = 0;
+    hoursDec++;
+  }
+  if(hoursDec>=24){
+    hoursDec = 0;
+  }
+  
+  delay(1000);
 }
 
 int duration, distance = 0;
