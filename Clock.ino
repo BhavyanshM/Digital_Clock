@@ -54,6 +54,11 @@ uint8_t hoursDec = 00;
 uint8_t minsDec = 00; 
 uint8_t secsDec = 00;
 
+int rightPot = 0;
+int leftPot = 0;
+int analogRight = 0;
+int analogLeft = 0;
+
 
 void loop() {
 //  input = xpand1.port()/256;//Get the MSB of the xpand1 port
@@ -69,7 +74,14 @@ State S0(){
 }
 
 State Analog(){
+  analogRight = analogRead(A1);
+  analogLeft = analogRead(A2);
 
+  if(analogRight != rightPot || analogLeft != leftPot){
+    rightPot = analogRight;
+    leftPot = analogLeft;
+    STM.Set(Analog);
+  }
 }
 
 uint8_t dec2bcd(uint8_t dec)
@@ -101,10 +113,8 @@ void displayClock(){
   digitalWrite(6, bitRead(secs,7));
 }
 
-State Clock(){
-  int rightPot = analogRead(A1);
-  int leftPot = analogRead(A2);
 
+State Clock(){
   displayClock();
 
   secsDec++;
@@ -118,6 +128,15 @@ State Clock(){
   }
   if(hoursDec>=24){
     hoursDec = 0;
+  }
+
+  analogRight = analogRead(A1);
+  analogLeft = analogRead(A2);
+
+  if(analogRight != rightPot || analogLeft != leftPot){
+    rightPot = analogRight;
+    leftPot = analogLeft;
+    STM.Set(Analog);
   }
   
   delay(1000);
