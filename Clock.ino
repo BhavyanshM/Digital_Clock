@@ -9,6 +9,29 @@ MCP23S17 xpand1 = MCP23S17( XPAND_1_CS_PIN, 0x00 );//Address B001
 
 SM STM(Clock);
 
+int input = 0;
+int i = 0;
+
+uint8_t hoursDec = 00;
+uint8_t minsDec = 00; 
+uint8_t secsDec = 00;
+
+uint8_t alarmHoursDec = 00;
+uint8_t alarmMinsDec = 00; 
+uint8_t alarmSecsDec = 00;
+
+int potWait = 0;
+int alarmOn = 0;
+
+int rightPot = 0;
+int leftPot = 0;
+int analogRight = 0;
+int analogLeft = 0;
+
+int potEnable = 0;
+int alarmEnable = 0;
+
+
 void setup() {
   // put your setup code here, to run once:
   pinMode(XPAND_1_CS_PIN, OUTPUT);//Set CS for first MCP23S17 as output
@@ -29,6 +52,11 @@ void setup() {
 //  xpand1.pinMode(15, OUTPUT);
 //  xpand1.pinMode(16, OUTPUT);
 
+  analogRight = analogRead(A1)/15 % 60;
+  analogLeft = analogRead(A2)/40 % 24;
+  leftPot = analogLeft;
+  rightPot = analogRight;
+
   Serial.begin(9600);
   
   pinMode(3, OUTPUT);
@@ -39,6 +67,9 @@ void setup() {
   pinMode(8, OUTPUT);
   pinMode(9, OUTPUT);
   pinMode(10, OUTPUT);
+
+  pinMode(A5, INPUT);
+  pinMode(A4, INPUT);
   
   xpand1.pinMode(OUTPUT);
   xpand1.port(0xFFFF);
@@ -47,17 +78,6 @@ void setup() {
  
   
 }
-int input = 0;
-int i = 0;
-
-uint8_t hoursDec = 00;
-uint8_t minsDec = 00; 
-uint8_t secsDec = 00;
-
-int rightPot = 0;
-int leftPot = 0;
-int analogRight = 0;
-int analogLeft = 0;
 
 
 void loop() {
@@ -69,19 +89,38 @@ void loop() {
 
 // State Machines States for STM Start Here
 State S0(){
-   Serial.println("State_0");
+//   Serial.println("State_0");
    xpand1.port(0x0000);
 }
 
 State Analog(){
-  analogRight = analogRead(A1);
-  analogLeft = analogRead(A2);
+  analogRight = analogRead(A1)/15 % 60;
+  analogLeft = analogRead(A2)/40 % 24;
+    potEnable = analogRead(A5);
+  alarmEnable = analogRead(A4);
 
-  if(analogRight != rightPot || analogLeft != leftPot){
-    rightPot = analogRight;
-    leftPot = analogLeft;
-    STM.Set(Analog);
+//  Serial.print(analogLeft);
+//  Serial.print("\t");
+//  Serial.print(analogRight);
+//  Serial.print("\n");
+
+
+
+  potWait++;
+  hoursDec = (uint8_t)analogLeft;
+  minsDec = (uint8_t)analogRight;
+  displayClock();
+
+  if(potEnable < 200){
+      potWait = 0;
+      STM.Set(Clock);
+  }else if(alarmEnable > 200){
+       alarmHoursDec = hoursDec;
+       alarmMinsDec = minsDec;
+
   }
+
+
 }
 
 uint8_t dec2bcd(uint8_t dec)
@@ -111,6 +150,15 @@ void displayClock(){
   digitalWrite(4, bitRead(secs,5));
   digitalWrite(5, bitRead(secs,6));
   digitalWrite(6, bitRead(secs,7));
+
+ Serial.print(alarmHoursDec);
+ Serial.println(alarmMinsDec);
+
+//  Serial.print(potEnable);
+//  Serial.print("\t");
+//  Serial.print(alarmEnable);
+//  Serial.println();
+  
 }
 
 
@@ -130,20 +178,40 @@ State Clock(){
     hoursDec = 0;
   }
 
-  analogRight = analogRead(A1);
-  analogLeft = analogRead(A2);
+  analogRight = analogRead(A1)/15 % 60;
+  analogLeft = analogRead(A2)/40 % 24;
 
-  if(analogRight != rightPot || analogLeft != leftPot){
+  potEnable = analogRead(A5);
+  alarmEnable = analogRead(A4);
+
+  if(potEnable > 200){
     rightPot = analogRight;
     leftPot = analogLeft;
+    potWait = 0;
     STM.Set(Analog);
+  }
+
+  if(hoursDec == alarmHoursDec && minsDec == alarmMinsDec){
+      alarmOn = 1;
+  }else{
+      alarmOn = 0;
+  }
+
+  if(alarmOn == 1){
+        analogWrite(A4, 1024);
+  }else{
+        analogWrite(A4, 0);  
   }
   
   delay(1000);
 }
 
 int duration, distance = 0;
-State S3(){
-    Serial.print("State_3:");
-    delay(1);
+State GetAlarmTime(){
+    Serial.print("Alarm Time: ");
+    Serial.print(hoursDec);
+    Serial.println(minsDec);
+    alarmHoursDec = hoursDec;
+    alarmMinsDec = minsDec;
+    STM.Set(Analog);
 }
